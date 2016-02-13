@@ -42,6 +42,7 @@ import android.os.Environment;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.util.TypedValue;
+import android.widget.Toast;
 
 import com.ferg.awfulapp.constants.Constants;
 import com.ferg.awfulapp.util.AwfulUtils;
@@ -53,6 +54,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -143,6 +145,7 @@ public class AwfulPreferences implements OnSharedPreferenceChangeListener {
     public boolean inlineTweets;
     public boolean inlineVines;
     public boolean inlineWebm;
+	public boolean autostartWebm;
     public boolean enableHardwareAcceleration;
     public boolean disablePullNext;
     public long probationTime;
@@ -230,7 +233,7 @@ public class AwfulPreferences implements OnSharedPreferenceChangeListener {
 		Resources res = mContext.getResources();
 		scaleFactor				 = res.getDisplayMetrics().density;
 		username                 = mPrefs.getString("username", "Username");
-        userTitle                = mPrefs.getString("user_title",null);
+        userTitle                = mPrefs.getString("user_title", null);
 		hasPlatinum              = mPrefs.getBoolean("has_platinum", false);
 		hasArchives              = mPrefs.getBoolean("has_archives", false);
 		hasNoAds         	     = mPrefs.getBoolean("has_no_ads", false);
@@ -251,9 +254,10 @@ public class AwfulPreferences implements OnSharedPreferenceChangeListener {
         highlightSelf			 = mPrefs.getBoolean("self_highlight", true);
         highlightOP				 = mPrefs.getBoolean("op_highlight", true);
 		inlineYoutube            = mPrefs.getBoolean("inline_youtube", false);
-		inlineTweets            = mPrefs.getBoolean("inline_tweets", false);
-		inlineVines            = mPrefs.getBoolean("inline_vines", false);
-		inlineWebm            = mPrefs.getBoolean("inline_webm", false);
+		inlineTweets             = mPrefs.getBoolean("inline_tweets", false);
+		inlineVines            	 = mPrefs.getBoolean("inline_vines", false);
+		inlineWebm            	 = mPrefs.getBoolean("inline_webm", false);
+		autostartWebm            = mPrefs.getBoolean("autostart_webm", true);
         enableHardwareAcceleration = mPrefs.getBoolean("enable_hardware_acceleration", AwfulUtils.isJellybean());
         debugMode            	 = false;//= mPrefs.getBoolean("debug_mode", false);
         wrapThreadTitles		 = mPrefs.getBoolean("wrap_thread_titles", false);
@@ -405,7 +409,9 @@ public class AwfulPreferences implements OnSharedPreferenceChangeListener {
 			e.printStackTrace();
 	    } catch (NameNotFoundException e) {
 			e.printStackTrace();
-		} 
+		}
+
+		Toast.makeText(getContext(), "Settings exported", Toast.LENGTH_LONG).show();
 	}
 	
 	public void importSettings(File settingsFile){
@@ -428,8 +434,10 @@ public class AwfulPreferences implements OnSharedPreferenceChangeListener {
 				setBooleanPreference(key, (Boolean)entry.getValue());
 			}else if("String".equals(classname)){
 				setStringPreference(key, (String)entry.getValue());
-			}else if("Float".equals(classname)){
-				setFloatPreference(key, (Float)entry.getValue());
+			}else if("Float".equals(classname)) {
+				setFloatPreference(key, (Float) entry.getValue());
+			}else if("ArrayList".equals(classname)){
+				setStringSetPreference(key, new HashSet<String>((ArrayList<String>)entry.getValue()));
 			}else{
 				if(longKeys.contains(key)){
 					setLongPreference(key, ((Double)entry.getValue()).longValue());
@@ -448,13 +456,17 @@ public class AwfulPreferences implements OnSharedPreferenceChangeListener {
 	}
 	
 	public void markUser(String username){
-		markedUsers.add(username);
-		setStringSetPreference("marked_users", markedUsers);
+		Set<String> newMarkedUsers = new HashSet<String>(markedUsers);
+		newMarkedUsers.add(username);
+		setStringSetPreference("marked_users", newMarkedUsers);
+		markedUsers = newMarkedUsers;
 	}
 	
 	public void unmarkUser(String username){
-		markedUsers.remove(username);
-		setStringSetPreference("marked_users", markedUsers);
+		Set<String> newMarkedUsers = new HashSet<String>(markedUsers);
+		newMarkedUsers.remove(username);
+		setStringSetPreference("marked_users", newMarkedUsers);
+		markedUsers = newMarkedUsers;
 	}
 
     /**

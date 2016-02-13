@@ -130,8 +130,12 @@ SALR.prototype.inlineTweets = function() {
             dataType: 'jsonp',
             success: function(data) {
                 link = $(link).wrap("<div class='tweet'>").parent();
-                datahtml = data.html.replace("src=\"\/\/", "href=\"https:\/\/");;
+                datahtml = data.html.replace("src=\"//platform.twitter.com/widgets.js\"", "src=\"file:///android_asset/twitterwidget.js\"");
                 $(link).html(datahtml);
+                if($('head').children('link').first().attr('href').indexOf('dark.css') != -1 || $('head').children('link').first().attr('href').indexOf('pos.css') != -1){
+                    $(link).children('blockquote').first().data('theme','dark');
+                }
+                window.twttr.widgets.load();
             }
         });
     });
@@ -147,13 +151,13 @@ SALR.prototype.inlineVines = function() {
     vines = vines.not('.bbc-spoiler a');
     vines.each(function() {
         $(this).html('<iframe class="vine-embed" src="'+$(this).attr('href')+'/embed/simple" width="600" height="600" frameborder="0"></iframe>'+
-                          '<script async src="//platform.vine.co/static/scripts/embed.js" charset="utf-8"></script>');
+                          '<script async src="http://platform.vine.co/static/scripts/embed.js" charset="utf-8"></script>');
     });
 };
 
 SALR.prototype.inlineWebm = function() {
     var that = this;
-    var webms = $('.postcontent a[href$="webm"],.postcontent a[href$="gifv"]');
+    var webms = $('.postcontent a[href$="webm"],.postcontent a[href$="gifv"],.postcontent a[href$="mp4"]');
 
     //webms = webms.not(".postcontent:has(img[title=':nws:']) a").not(".postcontent:has(img[title=':nms:']) a");
 
@@ -161,6 +165,6 @@ SALR.prototype.inlineWebm = function() {
     webms = webms.not('.bbc-spoiler a');
 
     webms.each(function() {
-        $(this).html('<video autoplay loop width="100%" muted="true" controls> <source src="'+$(this).attr('href').substr(0, $(this).attr('href').lastIndexOf('.'))+'.webm" type="video/webm"> </video>');
+        $(this).replaceWith('<video loop width="100%" muted="true" controls preload="metadata"> <source src="'+$(this).attr('href').substr(0, $(this).attr('href').lastIndexOf('.'))+'.webm" type="video/webm"> </video>');
     });
 };

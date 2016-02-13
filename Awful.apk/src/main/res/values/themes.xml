@@ -3,6 +3,7 @@
 
     <style name="Theme.AwfulTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <!-- Set AppCompat’s actionBarStyle -->
+        <item name="android:windowBackground">@null</item>
         <item name="actionBarStyle">@style/Widget.AppCompat.ActionBar</item>
         <!-- Set AppCompat’s color theming attrs -->
         <item name="colorPrimary">@color/forums_blue</item>
@@ -55,6 +56,8 @@
         <item name="iconMenuLogoutDark">@drawable/ic_power_settings_new_grey600_36dp</item>
         <item name="iconMenuSettings">@drawable/ic_settings_white_36dp</item>
         <item name="iconMenuSettingsDark">@drawable/ic_settings_grey600_36dp</item>
+        <item name="iconMenuSearch">@drawable/ic_magnify_white_36dp</item>
+        <item name="iconMenuSearchDark">@drawable/ic_magnify_grey600_36dp</item>
         <item name="iconMenuGoToPage">@drawable/ic_fast_forward_white_36dp</item>
         <item name="iconMenuGoToPageDark">@drawable/ic_fast_forward_grey600_36dp</item>
         <item name="iconMenuEmote">@drawable/ic_tag_faces_white_36dp</item>
@@ -100,6 +103,7 @@
 
     <style name="Theme.AwfulTheme.Dark" parent="Theme.AppCompat.NoActionBar">
         <!-- Set AppCompat’s actionBarStyle -->
+        <item name="android:windowBackground">@null</item>
         <item name="actionBarStyle">@style/Widget.AppCompat.ActionBar</item>
         <!-- Set AppCompat’s color theming attrs -->
         <item name="colorPrimary">@color/actionbar_color</item>
@@ -151,6 +155,8 @@
         <item name="iconMenuLogoutDark">@drawable/ic_power_settings_new_white_36dp</item>
         <item name="iconMenuSettings">@drawable/ic_settings_white_36dp</item>
         <item name="iconMenuSettingsDark">@drawable/ic_settings_white_36dp</item>
+        <item name="iconMenuSearch">@drawable/ic_magnify_white_36dp</item>
+        <item name="iconMenuSearchDark">@drawable/ic_magnify_white_36dp</item>
         <item name="iconMenuGoToPage">@drawable/ic_fast_forward_white_36dp</item>
         <item name="iconMenuGoToPageDark">@drawable/ic_fast_forward_white_36dp</item>
         <item name="iconMenuEmote">@drawable/ic_tag_faces_white_36dp</item>

@@ -88,7 +88,7 @@ public class AwfulActivity extends AppCompatActivity implements AwfulPreferences
         loggedIn = NetworkUtils.restoreLoginCookies(this.getAwfulApplication());
         if (isLoggedIn()) {
         	if(mPrefs.ignoreFormkey == null || mPrefs.userTitle == null){
-        		 NetworkUtils.queueRequest(new ProfileRequest(this, null).build(null, null));
+        		 NetworkUtils.queueRequest(new ProfileRequest(this).build(null, null));
         	}
             if(mPrefs.ignoreFormkey == null){
                 NetworkUtils.queueRequest(new FeatureRequest(this).build(null, null));
@@ -142,12 +142,12 @@ public class AwfulActivity extends AppCompatActivity implements AwfulPreferences
         action.setCustomView(R.layout.actionbar_title);
         mTitleView = (TextView) action.getCustomView();
         mTitleView.setMovementMethod(new ScrollingMovementMethod());
-        updateActionbarTheme(mPrefs);
+        updateActionbarTheme();
         action.setDisplayShowCustomEnabled(true);
         action.setDisplayHomeAsUpEnabled(true);
     }
     
-    protected void updateActionbarTheme(AwfulPreferences aPrefs){
+    protected void updateActionbarTheme(){
         ActionBar action = getSupportActionBar();
         if(action != null && mTitleView != null){
 	        //action.setBackgroundDrawable(new ColorDrawable(ColorProvider.getActionbarColor()));
@@ -228,7 +228,7 @@ public class AwfulActivity extends AppCompatActivity implements AwfulPreferences
             }
             afterThemeChange();
         }
-		updateActionbarTheme(prefs);
+		updateActionbarTheme();
 	}
 	
 	protected boolean isLoggedIn(){

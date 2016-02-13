@@ -85,6 +85,10 @@ public class AwfulForum extends AwfulPagedItem {
                 	if(imgTag != null && imgTag.hasAttr("src")){
 	                    String url = imgTag.attr("src");
 	                    if(url != null){
+							if(url.startsWith("//")){
+								// damn you and you protocol-less image urls, ZDR
+								url = Constants.BASE_URL.substring(0,Constants.BASE_URL.indexOf("//")) + url;
+							}
 	                    	//thread tag stuff
 	        				Matcher fileNameMatcher = AwfulEmote.fileName_regex.matcher(url);
 	        				if(fileNameMatcher.find()){
@@ -151,7 +155,7 @@ public class AwfulForum extends AwfulPagedItem {
 				}
 			}
 		}
-		if(result.size() > 0){
+		if(result.size() > 1){
 			Log.i(TAG, "Deleted old forums: " + contentInterface.delete(AwfulForum.CONTENT_URI, AwfulProvider.UPDATED_TIMESTAMP + "!=?", new String[]{update_time}));
 			contentInterface.bulkInsert(AwfulForum.CONTENT_URI, result.toArray(new ContentValues[result.size()]));
 		}
@@ -210,41 +214,13 @@ public class AwfulForum extends AwfulPagedItem {
 		contentInterface.bulkInsert(AwfulThread.CONTENT_URI_UCP, ucp_ids.toArray(new ContentValues[ucp_ids.size()]));
 	}
 
-    private static int getForumId(String aHref) {
+    public static int getForumId(String aHref) {
     	Matcher forumIdMatch = forumId_regex.matcher(aHref);
     	if(forumIdMatch.find()){
     		return Integer.parseInt(forumIdMatch.group(1));
     	}
         return -1;
     }
-    
-	public static void getView(View current, AwfulPreferences mPrefs, Cursor data, boolean hasSidebar, boolean selected) {
-		TextView title = (TextView) current.findViewById(R.id.title);
-		TextView sub = (TextView) current.findViewById(R.id.subtext);
-		if(mPrefs != null){
-			title.setTextColor(ColorProvider.getTextColor());
-			sub.setTextColor(ColorProvider.getAltTextColor());
-		}
-//		title.setText(Html.fromHtml(data.getString(data.getColumnIndex(TITLE))));
-		title.setText(data.getString(data.getColumnIndex(TITLE)));
-		String subtext = data.getString(data.getColumnIndex(SUBTEXT));
-		if(subtext == null || subtext.length() < 1){
-			sub.setVisibility(View.GONE);
-		}else{
-			sub.setVisibility(View.VISIBLE);
-			sub.setText(subtext);
-		}
-		if(hasSidebar){
-			current.setBackgroundResource(R.drawable.gradient_left);
-		}else{
-			current.setBackgroundResource(0);
-		}
-//		if(selected){
-//			current.findViewById(R.id.selector).setVisibility(View.VISIBLE);
-//		}else{
-//			current.findViewById(R.id.selector).setVisibility(View.GONE);
-//		}
-	}
 
 	public static String parseTitle(Document data) {
 		Elements result = data.getElementsByTag("title");
@@ -266,11 +242,6 @@ public class AwfulForum extends AwfulPagedItem {
 	 */	
 	public static void getExpandableForumView(View current, AQuery aq, AwfulPreferences aPrefs, ForumEntry data, boolean selected, boolean hasChildren) {
 		aq.recycle(current);
-		if(selected){
-			aq.backgroundColor(ColorProvider.getBackgroundColor());
-		}else{
-			aq.backgroundColor(ColorProvider.getBackgroundColor());
-		}
 		TextView title = (TextView) current.findViewById(R.id.forum_title);
 		title.setTypeface(null, Typeface.BOLD);
 		String titleText = (data.title != null ? data.title : "");

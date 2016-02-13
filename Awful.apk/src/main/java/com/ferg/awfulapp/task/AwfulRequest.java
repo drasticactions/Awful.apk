@@ -300,7 +300,7 @@ public abstract class AwfulRequest<T> {
             if (volleyError == null) {
                 errorMessage += "(null VolleyError)";
             } else {
-                Log.w(TAG, ""+volleyError);
+                Log.e(TAG, volleyError.toString());
                 if (volleyError.getCause() != null) {
                     String causeMessage = volleyError.getCause().getMessage();
                     errorMessage += (causeMessage == null) ? "unknown" : causeMessage;
@@ -309,7 +309,8 @@ public abstract class AwfulRequest<T> {
                     errorMessage += "\nStatus code: " + volleyError.networkResponse.statusCode;
                 }
             }
-            return new AwfulError(errorMessage);
+            Log.e(TAG, errorMessage);
+            return volleyError;// new AwfulError(errorMessage);
         }
 
 
@@ -351,7 +352,7 @@ public abstract class AwfulRequest<T> {
         public Map<String, String> getHeaders() throws AuthFailureError {
             Map<String, String> headers = super.getHeaders();
             if(headers == null || headers.size() < 1){
-                headers = new HashMap<String, String>();
+                headers = new HashMap<>();
             }
             NetworkUtils.setCookieHeaders(headers);
             if(Constants.DEBUG) Log.i(TAG, "getHeaders: "+headers.toString());

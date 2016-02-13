@@ -1,7 +1,7 @@
 /********************************************************************************
  * Copyright (c) 2011, Scott Ferguson
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
@@ -12,7 +12,7 @@
  *     * Neither the name of the software nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY SCOTT FERGUSON ''AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -27,10 +27,12 @@
 
 package com.ferg.awfulapp.thread;
 
+import android.Manifest;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.database.Cursor;
@@ -39,13 +41,14 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Environment;
-import android.os.Messenger;
+import android.support.v4.content.ContextCompat;
 import android.text.TextUtils;
 import android.text.TextUtils.TruncateAt;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.androidquery.AQuery;
 import com.ferg.awfulapp.AwfulFragment;
@@ -56,6 +59,7 @@ import com.ferg.awfulapp.network.NetworkUtils;
 import com.ferg.awfulapp.preferences.AwfulPreferences;
 import com.ferg.awfulapp.provider.AwfulProvider;
 import com.ferg.awfulapp.provider.ColorProvider;
+import com.ferg.awfulapp.util.AwfulUtils;
 import com.samskivert.mustache.Mustache;
 import com.samskivert.mustache.MustacheException;
 import com.samskivert.mustache.Template;
@@ -83,7 +87,7 @@ public class AwfulThread extends AwfulPagedItem  {
     public static final String UCP_PATH     = "/ucpthread";
     public static final Uri CONTENT_URI     = Uri.parse("content://" + Constants.AUTHORITY + PATH);
 	public static final Uri CONTENT_URI_UCP = Uri.parse("content://" + Constants.AUTHORITY + UCP_PATH);
-    
+
     public static final String ID 		            = "_id";
     public static final String INDEX 		        = "thread_index";
     public static final String FORUM_ID 	        = "forum_id";
@@ -110,10 +114,13 @@ public class AwfulThread extends AwfulPagedItem  {
     private static final String[] JS_FILES = {
         "zepto.min.js",
         "selector.js",
+        "scrollend.js",
+        "inviewport.js",
         "fx.js",
         "fx_methods.js",
         "reorient.js",
         "json2.js",
+        "twitterwidget.js",
         "salr.js",
         "thread.js"
     };
@@ -121,24 +128,6 @@ public class AwfulThread extends AwfulPagedItem  {
     private static final Pattern forumId_regex = Pattern.compile("forumid=(\\d+)");
 	private static final Pattern urlId_regex = Pattern.compile("([^#]+)#(\\d+)$");
 
-
-	
-    public static Document getForumThreads(int aForumId, int aPage, Messenger statusCallback) throws Exception {
-        HashMap<String, String> params = new HashMap<>();
-        params.put(Constants.PARAM_FORUM_ID, Integer.toString(aForumId));
-
-		if (aPage != 0) {
-			params.put(Constants.PARAM_PAGE, Integer.toString(aPage));
-		}
-
-        return NetworkUtils.get(Constants.FUNCTION_FORUM, params, statusCallback, 50);
-	}
-	
-    public static Document getUserCPThreads(int aPage, Messenger statusCallback) throws Exception {
-    	HashMap<String, String> params = new HashMap<>();
-		params.put(Constants.PARAM_PAGE, Integer.toString(aPage));
-        return NetworkUtils.get(Constants.FUNCTION_BOOKMARK, params, statusCallback, 50);
-	}
 
 	public static ArrayList<ContentValues> parseForumThreads(Document aResponse, int start_index, int forumId) {
         ArrayList<ContentValues> result = new ArrayList<>();
@@ -167,13 +156,13 @@ public class AwfulThread extends AwfulPagedItem  {
                 if (tarThread.size() > 0) {
                     thread.put(TITLE, tarThread.first().text().trim());
                 }
-                
+
                 if(node.hasClass("closed")){
                 	thread.put(LOCKED, 1);
                 }else{
                 	thread.put(LOCKED, 0);
                 }
-                	
+
 
                 Elements killedBy = node.getElementsByClass("lastpost");
                 thread.put(LASTPOSTER, killedBy.first().getElementsByClass("author").first().text());
@@ -183,7 +172,7 @@ public class AwfulThread extends AwfulPagedItem  {
                 } else {
                     thread.put(STICKY,0);
                 }
-                
+
                 Element rating = node.getElementsByClass("rating").first();
                 if (rating != null && rating.children().size() > 0){
                 	Element img = rating.children().first();
@@ -265,7 +254,7 @@ public class AwfulThread extends AwfulPagedItem  {
         }
         return result;
 	}
-	
+
 	public static ArrayList<ContentValues> parseSubforums(Document aResponse, int parentForumId){
         ArrayList<ContentValues> result = new ArrayList<>();
 		Elements subforums = aResponse.getElementsByClass("subforum");
@@ -295,7 +284,7 @@ public class AwfulThread extends AwfulPagedItem  {
 
 		Cursor threadData = contentResolv.query(ContentUris.withAppendedId(CONTENT_URI, aThreadId), AwfulProvider.ThreadProjection, null, null, null);
     	int totalReplies = 0, unread = 0, opId = 0, bookmarkStatus = 0, hasViewedThread = 0, postcount = 0;
-		if(threadData.moveToFirst()){
+		if(threadData != null && threadData.moveToFirst()){
 			totalReplies    = threadData.getInt(threadData.getColumnIndex(POSTCOUNT));
 			unread          = threadData.getInt(threadData.getColumnIndex(UNREADCOUNT));
             postcount       = threadData.getInt(threadData.getColumnIndex(POSTCOUNT));
@@ -303,7 +292,7 @@ public class AwfulThread extends AwfulPagedItem  {
 			hasViewedThread = threadData.getInt(threadData.getColumnIndex(HAS_VIEWED_THREAD));
 			bookmarkStatus  = threadData.getInt(threadData.getColumnIndex(BOOKMARKED));
 		}
-        
+
         ContentValues thread = new ContentValues();
         thread.put(ID, aThreadId);
     	Elements tarTitle = response.getElementsByClass("bclast");
@@ -312,7 +301,7 @@ public class AwfulThread extends AwfulPagedItem  {
         }else{
         	Log.e(TAG,"TITLE NOT FOUND!");
         }
-            
+
         Elements replyAlts = response.getElementsByAttributeValue("alt", "Reply");
         if (replyAlts.size() >0 && replyAlts.get(0).attr("src").contains("forum-closed")) {
         	thread.put(LOCKED, 1);
@@ -347,7 +336,9 @@ public class AwfulThread extends AwfulPagedItem  {
     	thread.put(FORUM_ID, forumId);
     	int lastPage = AwfulPagedItem.parseLastPage(response);
 
-		threadData.close();
+        if (threadData != null) {
+            threadData.close();
+        }
 		int replycount;
 		if(aUserId > 0){
 			replycount = AwfulPagedItem.pageToIndex(lastPage, aPageSize, 0);
@@ -370,7 +361,10 @@ public class AwfulThread extends AwfulPagedItem  {
             thread.put(AwfulThread.UNREADCOUNT, newUnread);
             Log.i(TAG, aThreadId+" - Old unread: "+unread+" new unread: "+newUnread);
         }
-        
+
+        if(contentResolv.update(ContentUris.withAppendedId(CONTENT_URI, aThreadId), thread, null, null) <1){
+            contentResolv.insert(CONTENT_URI, thread);
+        }
         AwfulPost.syncPosts(contentResolv,
                 response,
                 aThreadId,
@@ -378,10 +372,6 @@ public class AwfulThread extends AwfulPagedItem  {
                 opId,
                 aPrefs,
                 AwfulPagedItem.pageToIndex(aPage, aPageSize, 0));
-        
-    	if(contentResolv.update(ContentUris.withAppendedId(CONTENT_URI, aThreadId), thread, null, null) <1){
-    		contentResolv.insert(CONTENT_URI, thread);
-    	}
     }
 
     public static String getContainerHtml(AwfulPreferences aPrefs, int forumId){
@@ -391,38 +381,12 @@ public class AwfulThread extends AwfulPagedItem  {
         buffer.append("<meta name='format-detection' content='telephone=no' />\n");
         buffer.append("<meta name='format-detection' content='address=no' />\n");
 
-        // set the css if we need to force a forum theme
-        String themeCss = null;
-        if(aPrefs.forceForumThemes){
-            switch (forumId) {
-                case(Constants.FORUM_ID_FYAD):
-                case(Constants.FORUM_ID_FYAD_SUB):
-                    themeCss = "fyad.css";
-                    break;
-                case(Constants.FORUM_ID_BYOB):
-                case(Constants.FORUM_ID_COOL_CREW):
-                    themeCss = "byob.css";
-                    break;
-                case(Constants.FORUM_ID_YOSPOS):
-                    themeCss = aPrefs.amberDefaultPos ? "amberpos.css" : "yospos.css";
-                    break;
-            }
-        }
 
-        final String awfulFolder = Environment.getExternalStorageDirectory() + "/awful/";
-        // if we haven't forced a theme, work out if the user's theme is a custom one
-        boolean useCustomCss = false;
-        if (themeCss == null) {
-            File customCssFile = new File(awfulFolder + aPrefs.theme);
-            if (customCssFile.isFile() && customCssFile.canRead()) {
-                useCustomCss = true;
-            }
-            themeCss = aPrefs.theme;
-        }
         // build the link tag, using the custom css path if necessary
-        buffer.append("<link rel='stylesheet' href='file:///");
-        buffer.append(useCustomCss ? awfulFolder : "android_asset/css/");
-        buffer.append(themeCss).append("'>\n");
+        buffer.append("<link rel='stylesheet' href='");
+        buffer.append(AwfulUtils.determineCSS(forumId));
+        buffer.append("'>\n");
+        buffer.append("<link rel='stylesheet' href='file:///android_asset/css/general.css' />");
 
 
         if(!aPrefs.preferredFont.contains("default")){
@@ -479,9 +443,23 @@ public class AwfulThread extends AwfulPagedItem  {
         try {
             Reader templateReader = null;
             if (!"default".equals(aPrefs.layout)) {
-                File template = new File(Environment.getExternalStorageDirectory()+"/awful/"+aPrefs.layout);
-                if (template.isFile() && template.canRead()) {
-                    templateReader = new FileReader(template);
+                if (AwfulUtils.isMarshmallow()) {
+                    int permissionCheck = ContextCompat.checkSelfPermission(aPrefs.getContext(), Manifest.permission.READ_EXTERNAL_STORAGE);
+
+                    if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
+                        File template = new File(Environment.getExternalStorageDirectory() + "/awful/" + aPrefs.layout);
+                        if (template.isFile() && template.canRead()) {
+                            templateReader = new FileReader(template);
+                        }
+                    }else{
+                        Toast.makeText(aPrefs.getContext(), "Can't access custom layout because Awful lacks storage permissions. Reverting to default layout.", Toast.LENGTH_LONG).show();
+                    }
+                } else {
+                    File template = new File(Environment.getExternalStorageDirectory() + "/awful/" + aPrefs.layout);
+                    if (template.isFile() && template.canRead()) {
+                        templateReader = new FileReader(template);
+                    }
+
                 }
             }
             if (templateReader == null) {
@@ -515,7 +493,7 @@ public class AwfulThread extends AwfulPagedItem  {
         	postData.put("notOnProbation",(aPrefs.isOnProbation()) ? null : "notOnProbation");
         	postData.put("editable",(post.isEditable()) ? "editable" : null);
         	postData.put("postcontent", post.getContent());
-        	
+
         	try{
         		buffer.append(postTemplate.execute(postData));
         	}catch(MustacheException e){
@@ -548,7 +526,7 @@ public class AwfulThread extends AwfulPagedItem  {
             }
         }
 
-        TextView info   = (TextView) current.findViewById(R.id.threadinfo);
+        TextView info   = (TextView) current.findViewById(R.id.thread_info);
         TextView title  = (TextView) current.findViewById(R.id.title);
         TextView unread = (TextView) current.findViewById(R.id.unread_count);
         boolean stuck   = data.getInt(data.getColumnIndex(STICKY)) >0;
@@ -651,5 +629,5 @@ public class AwfulThread extends AwfulPagedItem  {
         info.setTextColor(ColorProvider.getAltTextColor(ForumName));
         title.setEllipsize(TruncateAt.END);
 	}
-	
+
 }

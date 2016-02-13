@@ -3,7 +3,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    android:background="?background"
     android:orientation="vertical">
 
     <com.ferg.awfulapp.widget.AwfulProgressBar
@@ -30,18 +29,18 @@
         android:layout_height="0dp"
         android:layout_weight="1">
 
-            <com.ferg.awfulapp.widget.SwipyRefreshLayout
-                android:id="@+id/thread_swipe"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                app:direction="both">
+        <com.ferg.awfulapp.widget.SwipyRefreshLayout
+            android:id="@+id/thread_swipe"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:direction="both">
 
-                <WebView
-                    android:id="@+id/thread"
-                    android:layout_width="fill_parent"
-                    android:layout_height="fill_parent"
-                    android:background="@color/background" />
-            </com.ferg.awfulapp.widget.SwipyRefreshLayout>
+            <WebView
+                android:id="@+id/thread"
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"
+                android:background="@color/background" />
+        </com.ferg.awfulapp.widget.SwipyRefreshLayout>
         <android.support.design.widget.FloatingActionButton
             android:id="@+id/just_post"
             android:layout_width="wrap_content"

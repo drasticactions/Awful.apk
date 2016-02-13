@@ -46,16 +46,22 @@ import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 import android.widget.Toast;
 
+import com.android.volley.NetworkResponse;
+import com.android.volley.VolleyError;
 import com.ferg.awfulapp.constants.Constants;
 import com.ferg.awfulapp.network.NetworkUtils;
 import com.ferg.awfulapp.preferences.AwfulPreferences;
+import com.ferg.awfulapp.task.AwfulRequest;
+import com.ferg.awfulapp.task.LoginRequest;
+import com.ferg.awfulapp.task.SendEditRequest;
+
+import org.apache.http.HttpStatus;
+import org.apache.http.protocol.HTTP;
 
 import java.util.HashMap;
 
 public class AwfulLoginActivity extends AwfulActivity {
     private static final String TAG = "LoginActivity";
-
-    private LoginTask mLoginTask;
 
     private Button mLogin;
     private EditText mUsername;
@@ -117,10 +123,6 @@ public class AwfulLoginActivity extends AwfulActivity {
         if (mDialog != null) {
             mDialog.dismiss();
         }
-
-        if (mLoginTask != null) {
-            mLoginTask.cancel(true);
-        }
     }
 
     @Override
@@ -129,10 +131,6 @@ public class AwfulLoginActivity extends AwfulActivity {
 
         if (mDialog != null) {
             mDialog.dismiss();
-        }
-
-        if (mLoginTask != null) {
-            mLoginTask.cancel(true);
         }
     }
 
@@ -143,18 +141,56 @@ public class AwfulLoginActivity extends AwfulActivity {
         if (mDialog != null) {
             mDialog.dismiss();
         }
-
-        if (mLoginTask != null) {
-            mLoginTask.cancel(true);
-        }
     }
 
     private void loginClick() {
-        String username = NetworkUtils.encodeHtml(mUsername.getText().toString());
-        String password = NetworkUtils.encodeHtml(mPassword.getText().toString());
+        final String username = NetworkUtils.encodeHtml(mUsername.getText().toString());
+        final String password = NetworkUtils.encodeHtml(mPassword.getText().toString());
 
-        mLoginTask = new LoginTask();
-        mLoginTask.execute(new String[]{username, password});
+        mDialog = ProgressDialog.show(AwfulLoginActivity.this, "Logging In", "Hold on...", true);
+        final AwfulLoginActivity self = this;
+        NetworkUtils.queueRequest(new LoginRequest(this, username, password).build(null, new AwfulRequest.AwfulResultCallback<Boolean>() {
+            @Override
+            public void success(Boolean result) {
+                onLoginSuccess();
+            }
+
+            @Override
+            public void failure(VolleyError error) {
+                // Volley sometimes generates NetworkErrors with no response set, or wraps them
+                NetworkResponse response = error.networkResponse;
+                if (response == null) {
+                    Throwable cause = error.getCause();
+                    if (cause != null && cause instanceof VolleyError) {
+                        response = ((VolleyError) cause).networkResponse;
+                    }
+                }
+                if (response != null && response.statusCode == HttpStatus.SC_MOVED_TEMPORARILY) {
+                    Boolean result = NetworkUtils.saveLoginCookies(getApplicationContext());
+                    if(result){
+                        AwfulPreferences prefs = AwfulPreferences.getInstance(getApplicationContext());
+                        prefs.setStringPreference("username", username);
+                        onLoginSuccess();
+                    }else{
+                        onLoginFailed();
+                    }
+                } else {
+                    onLoginFailed();
+                }
+            }
+
+            private void onLoginSuccess() {
+                mDialog.dismiss();
+                Toast.makeText(AwfulLoginActivity.this, R.string.login_succeeded, Toast.LENGTH_SHORT).show();
+                setResult(Activity.RESULT_OK);
+                self.finish();
+            }
+            private  void onLoginFailed(){
+                mDialog.dismiss();
+                Toast.makeText(AwfulLoginActivity.this, R.string.login_failed, Toast.LENGTH_SHORT).show();
+                setResult(Activity.RESULT_CANCELED);
+            }
+        }));
     }
 
     private View.OnClickListener onLoginClick = new View.OnClickListener() {
@@ -162,55 +198,4 @@ public class AwfulLoginActivity extends AwfulActivity {
             loginClick();
         }
     };
-
-    private class LoginTask extends AsyncTask<String, Void, Boolean> {
-        public void onPreExecute() {
-            mDialog = ProgressDialog.show(AwfulLoginActivity.this, "Logging In",
-                    "Hold on...", true);
-        }
-
-        public Boolean doInBackground(String... aParams) {
-            boolean result = false;
-
-            if (!isCancelled()) {
-                HashMap<String, String> params = new HashMap<String, String>();
-                params.put(Constants.PARAM_USERNAME, aParams[0]);
-                params.put(Constants.PARAM_PASSWORD, aParams[1]);
-                params.put(Constants.PARAM_ACTION, "login");
-
-                try {
-                    NetworkUtils.post(Constants.FUNCTION_LOGIN_SSL, params);
-                    result = NetworkUtils.saveLoginCookies(AwfulLoginActivity.this);
-
-                    // Write username to preferences for SALR features
-                    AwfulPreferences prefs = AwfulPreferences.getInstance(AwfulLoginActivity.this);
-                    prefs.setStringPreference("username", aParams[0]);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    Log.i(TAG, e.toString());
-                }
-            }
-
-            return result;
-        }
-
-        public void onPostExecute(Boolean aResult) {
-            if (!isCancelled()) {
-                boolean succeeded = aResult;
-
-                mDialog.dismiss();
-
-                int loginStatusResource = succeeded ? R.string.login_succeeded : R.string.login_failed;
-                Toast.makeText(AwfulLoginActivity.this, loginStatusResource, Toast.LENGTH_SHORT).show();
-
-                if (succeeded) {
-                    setResult(Activity.RESULT_OK);
-                    finish();
-                } else {
-                    setResult(Activity.RESULT_CANCELED);
-                    // Not finishing - give the user another chance to log in
-                }
-            }
-        }
-    }
 }

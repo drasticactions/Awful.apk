@@ -27,15 +27,13 @@
 
 package com.ferg.awfulapp;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.app.DownloadManager.Request;
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.ContentUris;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -44,7 +42,6 @@ import android.content.res.TypedArray;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
-import android.nfc.Tag;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -54,6 +51,7 @@ import android.os.Message;
 import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.LoaderManager;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v4.view.MenuItemCompat;
@@ -68,6 +66,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
+import android.webkit.ConsoleMessage;
 import android.webkit.CookieManager;
 import android.webkit.CookieSyncManager;
 import android.webkit.JavascriptInterface;
@@ -112,8 +111,6 @@ import com.ferg.awfulapp.util.AwfulUtils;
 import com.orangegangsters.github.swipyrefreshlayout.library.SwipyRefreshLayout;
 import com.orangegangsters.github.swipyrefreshlayout.library.SwipyRefreshLayoutDirection;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -130,7 +127,6 @@ import java.util.List;
  *  Can also handle an HTTP intent that refers to an SA showthread.php? url.
  */
 public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefreshLayout.OnRefreshListener {
-    private static final boolean OUTPUT_HTML = false;
 
     private PostLoaderManager mPostLoaderCallback;
     private ThreadDataCallback mThreadLoaderCallback;
@@ -186,8 +182,9 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
     private String bodyHtml = "";
 	private HashMap<String,String> ignorePostsHtml = new HashMap<>();
     private AsyncTask<Void, Void, String> redirect = null;
+	private Uri downloadLink;
 
-    public ThreadDisplayFragment() {
+	public ThreadDisplayFragment() {
         super();
         TAG = "ThreadDisplayFragment";
     }
@@ -368,6 +365,9 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
         if(DEBUG && AwfulUtils.isKitKat()) {
 			WebView.setWebContentsDebuggingEnabled(true);
 		}
+		if(AwfulUtils.isLollipop()){
+			mThreadView.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+		}
 		if (mPrefs.inlineYoutube || mPrefs.inlineWebm || mPrefs.inlineVines) {//YOUTUBE SUPPORT BLOWS
 			mThreadView.getSettings().setPluginState(PluginState.ON_DEMAND);
 		}
@@ -387,8 +387,9 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
 
 
 		mThreadView.setWebChromeClient(new WebChromeClient() {
-			public void onConsoleMessage(String message, int lineNumber, String sourceID) {
-				if(DEBUG) Log.d("Web Console", message + " -- From line " + lineNumber + " of " + sourceID);
+			public boolean onConsoleMessage(ConsoleMessage message) {
+				if(DEBUG) Log.d("Web Console", message.message() + " -- From line " + message.lineNumber() + " of " + message.sourceId());
+				return true;
 			}
 
 			@Override
@@ -692,13 +693,9 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
     }
 
 	private void copyThreadURL(String postId) {
-		String url = generateThreadUrl(postId);
-		ClipboardManager clipboard = (ClipboardManager) this.getActivity().getSystemService(
-				Context.CLIPBOARD_SERVICE);
-		ClipData clip = ClipData.newPlainText(this.getText(R.string.copy_url).toString() + getPage(), url);
-		clipboard.setPrimaryClip(clip);
-
-		displayAlert(R.string.copy_url_success, 0, R.attr.iconMenuLink);
+		String clipLabel = this.getText(R.string.copy_url).toString() + getPage();
+		String clipText  = generateThreadUrl(postId);
+		safeCopyToClipboard(clipLabel, clipText, R.string.copy_url_success);
 	}
 
 	private void rateThread() {
@@ -886,7 +883,7 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
 	private void toggleYospos() {
 		mPrefs.amberDefaultPos = !mPrefs.amberDefaultPos;
 		mPrefs.setBooleanPreference("amber_default_pos", mPrefs.amberDefaultPos);
-		mThreadView.loadUrl("javascript:changeCSS('"+determineCSS()+"')");
+		mThreadView.loadUrl("javascript:changeCSS('"+AwfulUtils.determineCSS(mParentForumId)+"')");
 	}
     
     private void startPostRedirect(final String postUrl) {
@@ -928,10 +925,6 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
                 }
             }.execute();
         }
-    }
-
-    private void displayUserCP() {
-    	getAwfulActivity().displayForum(Constants.USERCP_ID, 1);
     }
 
     private void displayPagePicker() {
@@ -1060,12 +1053,6 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
         try {
 
             String html = AwfulThread.getHtml(aPosts, AwfulPreferences.getInstance(getActivity()), getPage(), mLastPage, mParentForumId, threadClosed);
-            if(OUTPUT_HTML && Environment.getExternalStorageState().equalsIgnoreCase(Environment.MEDIA_MOUNTED)){
-            	Toast.makeText(getActivity(), "OUTPUTTING DEBUG HTML", Toast.LENGTH_LONG).show();
-            	FileOutputStream out = new FileOutputStream(new File(Environment.getExternalStorageDirectory(), "awful-thread-"+getThreadId()+"-"+getPage()+".html"));
-            	out.write(html.replaceAll("file:///android_res/", "").replaceAll("file:///android_asset/", "").getBytes());
-            	out.close();
-            }
             refreshSessionCookie();
             bodyHtml = html;
             mThreadView.loadUrl("javascript:loadpagehtml()");
@@ -1240,7 +1227,7 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
 
         @JavascriptInterface
         public String getCSS(){
-            return determineCSS();
+            return AwfulUtils.determineCSS(mParentForumId);
         }
         
         private void preparePreferences(){
@@ -1259,6 +1246,7 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
 			preferences.put("highlightUsername", Boolean.toString(aPrefs.highlightUsername));
 			preferences.put("inlineTweets", Boolean.toString(aPrefs.inlineTweets));
 			preferences.put("inlineWebm", Boolean.toString(aPrefs.inlineWebm));
+			preferences.put("autostartWebm", Boolean.toString(aPrefs.autostartWebm));
 			preferences.put("inlineVines", Boolean.toString(aPrefs.inlineVines));
 			preferences.put("postjumpid", mPostJump);
 			preferences.put("scrollPosition", Integer.toString(savedScrollPosition));
@@ -1348,7 +1336,7 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
 		final boolean isImage = link != null && link.getLastPathSegment() != null && (link.getLastPathSegment().contains(".jpg") 
 				|| link.getLastPathSegment().contains(".jpeg") 
 				|| link.getLastPathSegment().contains(".png") 
-				|| link.getLastPathSegment().contains(".gif")
+				|| (link.getLastPathSegment().contains(".gif") && !link.getLastPathSegment().contains(".gifv"))
 				);
     	new AlertDialog.Builder(getActivity())
         .setTitle(url)
@@ -1358,12 +1346,7 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
             public void onClick(DialogInterface aDialog, int aItem) {
             	switch(aItem+(isImage?0:2)){
             	case 0:
-        			Request request = new Request(link);
-        			request.setShowRunningNotification(true);
-        			request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, link.getLastPathSegment());
-        			request.allowScanningByMediaScanner();
-        			DownloadManager dlMngr= (DownloadManager) getAwfulActivity().getSystemService(AwfulActivity.DOWNLOAD_SERVICE);
-        	        dlMngr.enqueue(request);
+					enqueueDownload(link);
         			break;
             	case 1:
         			if(mThreadView != null){
@@ -1384,11 +1367,26 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
             }
         }).show();
 	}
-	
+
+	private void enqueueDownload(Uri link) {
+		if(AwfulUtils.isMarshmallow()){
+			int permissionCheck = ContextCompat.checkSelfPermission(this.getContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE);
+			if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+				downloadLink = link;
+				requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, Constants.AWFUL_PERMISSION_WRITE_EXTERNAL_STORAGE);
+				return;
+			}
+		}
+		Request request = new Request(link);
+		request.setShowRunningNotification(true);
+		request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, link.getLastPathSegment());
+		request.allowScanningByMediaScanner();
+		DownloadManager dlMngr= (DownloadManager) getAwfulActivity().getSystemService(AwfulActivity.DOWNLOAD_SERVICE);
+		dlMngr.enqueue(request);
+	}
+
 	private void copyToClipboard(String text){
-		ClipboardManager clipboard = (ClipboardManager) getActivity().getSystemService(Context.CLIPBOARD_SERVICE);
-		ClipData clip = ClipData.newPlainText("Copied URL", text);
-		clipboard.setPrimaryClip(clip);
+		safeCopyToClipboard("Copied URL", text, null);
 	}
 	
 	private void startUrlIntent(String url){
@@ -1408,6 +1406,7 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
 	@Override
 	public void onPreferenceChange(AwfulPreferences mPrefs, String key) {
 		super.onPreferenceChange(mPrefs, key);
+		if(DEBUG) Log.i(TAG,"onPreferenceChange"+((key != null)?":"+key:""));
         if(null != getAwfulActivity()){
 		    getAwfulActivity().setPreferredFont(mPageCountText);
         }
@@ -1419,10 +1418,14 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
 		}
 		if(mThreadView != null){
 			mThreadView.setBackgroundColor(ColorProvider.getBackgroundColor());
-            mThreadView.loadUrl("javascript:changeCSS('"+determineCSS()+"')");
+			//mThreadView.loadUrl("javascript:changeCSS('"+AwfulUtils.determineCSS(mParentForumId)+"')");
             mThreadView.loadUrl("javascript:changeFontFace('"+mPrefs.preferredFont+"')");
             mThreadView.getSettings().setDefaultFontSize(mPrefs.postFontSizeDip);
             mThreadView.getSettings().setDefaultFixedFontSize(mPrefs.postFixedFontSizeDip);
+
+			if("marked_users".equals(key)){
+				mThreadView.loadUrl("javascript:updateMarkedUsers('"+TextUtils.join(",",mPrefs.markedUsers)+"')");
+			}
 		}
 		if(clickInterface != null){
 			clickInterface.preparePreferences();
@@ -1563,6 +1566,9 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
         		threadBookmarked = aData.getInt(aData.getColumnIndex(AwfulThread.BOOKMARKED))>0;
                 threadArchived = aData.getInt(aData.getColumnIndex(AwfulThread.ARCHIVED))>0;
         		mParentForumId = aData.getInt(aData.getColumnIndex(AwfulThread.FORUM_ID));
+				if(mParentForumId != 0 && mThreadView != null){
+					mThreadView.loadUrl("javascript:changeCSS('"+AwfulUtils.determineCSS(mParentForumId)+"')");
+				}
 //                //Same thread, already done this, don't override the forum name
 //                if(null == getTitle() || !getTitle().equals(aData.getString(aData.getColumnIndex(AwfulThread.TITLE)))) {
 //                    parent.setNavForumId(mParentForumId);
@@ -1595,7 +1601,7 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
         }
         @Override
         public void onChange (boolean selfChange){
-        	if(DEBUG) Log.e(TAG,"Thread Data update.");
+        	if(DEBUG) Log.i(TAG,"Thread Data update.");
         	refreshInfo();
         }
     }
@@ -1641,7 +1647,7 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
     	if(url.isRedirect()){
     		startPostRedirect(url.getURL(mPrefs.postPerPage));
     	}else{
-    		loadThread((int)url.getId(), (int)url.getPage(mPrefs.postPerPage), url.getFragment());
+    		loadThread((int) url.getId(), (int) url.getPage(mPrefs.postPerPage), url.getFragment());
     	}
 	}
 	
@@ -1772,31 +1778,22 @@ public class ThreadDisplayFragment extends AwfulFragment implements SwipyRefresh
 		displayAlert( keepScreenOn? "Screen stays on" :"Screen turns itself off");
 	}
 
-    
-    private String determineCSS(){
-        File css = new File(Environment.getExternalStorageDirectory()+"/awful/"+mPrefs.theme);
-        if(!(mPrefs.forceForumThemes && (mParentForumId == Constants.FORUM_ID_YOSPOS || mParentForumId == Constants.FORUM_ID_FYAD || mParentForumId == Constants.FORUM_ID_FYAD_SUB || mParentForumId == Constants.FORUM_ID_BYOB || mParentForumId == Constants.FORUM_ID_COOL_CREW) ) && css.exists() && css.isFile() && css.canRead()){
-        	return "file:///"+Environment.getExternalStorageDirectory()+"/awful/"+mPrefs.theme;
-        }else if(mPrefs.forceForumThemes){
-        	switch(mParentForumId){
-    			case(Constants.FORUM_ID_FYAD):
-                case(Constants.FORUM_ID_FYAD_SUB):
-					return "file:///android_asset/css/fyad.css";
-				case(Constants.FORUM_ID_BYOB):
-				case(Constants.FORUM_ID_COOL_CREW):
-        			return "file:///android_asset/css/byob.css";
-        		case(Constants.FORUM_ID_YOSPOS):
-					if(mPrefs.amberDefaultPos){
-						return "file:///android_asset/css/amberpos.css";
-					}else{
-						return "file:///android_asset/css/yospos.css";
-					}
-        		default:
-        			return "file:///android_asset/css/"+mPrefs.theme;
-        	}
-        }else{
-            return "file:///android_asset/css/"+mPrefs.theme;
-        }
-    }
-
+	@Override
+	public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+		switch (requestCode) {
+			case Constants.AWFUL_PERMISSION_WRITE_EXTERNAL_STORAGE: {
+				// If request is cancelled, the result arrays are empty.
+				if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+					if(downloadLink != null)
+					enqueueDownload(downloadLink);
+				} else {
+					Toast.makeText(getActivity(), R.string.no_file_permission_download, Toast.LENGTH_LONG).show();
+				}
+				downloadLink = null;
+				break;
+			}
+			default:
+				super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+		}
+	}
 }

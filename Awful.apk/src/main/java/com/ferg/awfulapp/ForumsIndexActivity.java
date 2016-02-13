@@ -118,6 +118,7 @@ public class ForumsIndexActivity extends AwfulActivity {
 
     private GestureDetector mImmersionGestureDetector = null;
     private boolean mIgnoreFling;
+    private String mThreadPost="";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -241,6 +242,9 @@ public class ForumsIndexActivity extends AwfulActivity {
                     case R.id.sidebar_settings:
                         startActivity(new Intent().setClass(context, SettingsActivity.class));
                         break;
+                    case R.id.sidebar_search:
+                        startActivity(new Intent().setClass(context, SearchActivity.class));
+                        break;
                     case R.id.sidebar_pm:
                         startActivity(new Intent().setClass(context, PrivateMessageActivity.class));
                         break;
@@ -275,24 +279,29 @@ public class ForumsIndexActivity extends AwfulActivity {
         );
         mDrawerLayout.setDrawerListener(mDrawerToggle);
 
+        View nav = navigation.getHeaderView(0);
+
         // update the navigation drawer header
-        TextView username = (TextView) findViewById(R.id.sidebar_username);
+        TextView username = (TextView) nav.findViewById(R.id.sidebar_username);
         if (null != username) {
             username.setText(mPrefs.username);
         }
 
-        ImageView avatar = (ImageView) findViewById(R.id.sidebar_avatar);
+        ImageView avatar = (ImageView) nav.findViewById(R.id.sidebar_avatar);
         if (null != avatar) {
             AQuery aq = new AQuery(this);
             if (null != mPrefs.userTitle) {
                 if (!("".equals(mPrefs.userTitle))) {
-                    aq.id(R.id.sidebar_avatar).image(mPrefs.userTitle);
+                    aq.id(avatar).image(mPrefs.userTitle);
+                    if (AwfulUtils.isLollipop()) {
+                        avatar.setClipToOutline(true);
+                    }
                 } else {
-                    aq.id(R.id.sidebar_avatar).image(R.drawable.icon).backgroundColorId(R.color.forums_blue);
+                    aq.id(avatar).image(R.drawable.icon).backgroundColorId(R.color.forums_blue);
+                    if (AwfulUtils.isLollipop()) {
+                        avatar.setClipToOutline(false);
+                    }
                 }
-            }
-            if (AwfulUtils.isLollipop()) {
-                avatar.setClipToOutline(true);
             }
         }
 
@@ -358,6 +367,19 @@ public class ForumsIndexActivity extends AwfulActivity {
                     @Override
                     public void run() {
                         pmItem.setEnabled(mPrefs.hasPlatinum).setVisible(mPrefs.hasPlatinum);
+                    }
+                });
+            }
+        }
+
+        // private messages - show 'em if you got 'em
+        final MenuItem searchItem = navMenu.findItem(R.id.sidebar_search);
+        if (searchItem != null) {
+            if (searchItem.isEnabled() != mPrefs.hasPlatinum || searchItem.isVisible() != mPrefs.hasPlatinum) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        searchItem.setEnabled(mPrefs.hasPlatinum).setVisible(mPrefs.hasPlatinum);
                     }
                 });
             }
@@ -446,7 +468,8 @@ public class ForumsIndexActivity extends AwfulActivity {
             if (url.isThread() || url.isPost()) {
                 mThreadFragment.openThread(url);
             } else if (intent.getIntExtra(Constants.THREAD_ID, NULL_THREAD_ID) > 0) {
-                mThreadFragment.openThread(mThreadId, mThreadPage);
+                if (DEBUG) Log.e(TAG, "else: "+mThreadPost);
+                mThreadFragment.openThread(mThreadId, mThreadPage, mThreadPost);
             }
         }
     }
@@ -457,6 +480,7 @@ public class ForumsIndexActivity extends AwfulActivity {
         int forumPage   = getIntent().getIntExtra(Constants.FORUM_PAGE, mForumPage);
         int threadId    = getIntent().getIntExtra(Constants.THREAD_ID, mThreadId);
         int threadPage  = getIntent().getIntExtra(Constants.THREAD_PAGE, mThreadPage);
+        mThreadPost = getIntent().getStringExtra(Constants.THREAD_FRAGMENT);
 
         if (forumId == 2) {//workaround for old userCP ID, ugh. the old id still appears if someone created a bookmark launch shortcut prior to b23
             forumId = Constants.USERCP_ID;//should never have used 2 as a hard-coded forum-id, what a horror.
@@ -841,17 +865,7 @@ public class ForumsIndexActivity extends AwfulActivity {
         if (mViewPager != null) {
             mViewPager.setSwipeEnabled(!prefs.lockScrolling);
         }
-        if (mDrawerLayout != null) {
-            ImageView avatar = (ImageView) findViewById(R.id.sidebar_avatar);
-            if (null != avatar) {
-                AQuery aq = new AQuery(this);
-                if (null != mPrefs.userTitle) {
-                    aq.id(R.id.sidebar_avatar).image(mPrefs.userTitle);
-                } else {
-                    aq.id(R.id.sidebar_avatar).image(R.drawable.icon);
-                }
-            }
-        }
+        setNavigationDrawer();
         if (!AwfulUtils.isTablet(this) && AwfulUtils.isAtLeast(Build.VERSION_CODES.JELLY_BEAN_MR1) && !prefs.transformer.equals("Disabled")) {
             mViewPager.setPageTransformer(true, AwfulUtils.getViewPagerTransformer());
         }
@@ -900,7 +914,15 @@ public class ForumsIndexActivity extends AwfulActivity {
     }
 
     public void reenableSwipe() {
-        this.mViewPager.setSwipeEnabled(true);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (mViewPager.beginFakeDrag()) {
+                    mViewPager.endFakeDrag();
+                }
+                mViewPager.setSwipeEnabled(true);
+            }
+        });
     }
 
 

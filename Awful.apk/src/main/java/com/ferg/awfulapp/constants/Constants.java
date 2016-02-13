@@ -30,7 +30,8 @@ package com.ferg.awfulapp.constants;
 public class Constants {
     public static final boolean DEBUG = false;
 
-    public static final String BASE_URL = "http://forums.somethingawful.com";
+    //public static final String BASE_URL = "http://forums.somethingawful.com";
+    public static final String BASE_URL = "https://forums.somethingawful.com";
 
     public static final String FUNCTION_LOGIN           = BASE_URL + "/account.php";
     public static final String FUNCTION_LOGIN_SSL       = "https://forums.somethingawful.com/account.php";
@@ -42,7 +43,7 @@ public class Constants {
     public static final String FUNCTION_EDIT_POST       = BASE_URL + "/editpost.php";
     public static final String FUNCTION_MEMBER          = BASE_URL + "/member.php";
     public static final String FUNCTION_MEMBER2         = BASE_URL + "/member2.php";
-    public static final String FUNCTION_SEARCH          = BASE_URL + "/search.php";
+    public static final String FUNCTION_SEARCH          = BASE_URL + "/query.php";
     public static final String FUNCTION_PRIVATE_MESSAGE = BASE_URL + "/private.php";
     public static final String FUNCTION_BANLIST         = BASE_URL + "/banlist.php";
     public static final String FUNCTION_RATE_THREAD     = BASE_URL + "/threadrate.php";
@@ -58,7 +59,9 @@ public class Constants {
     public static final String ACTION_SEARCH_POST_HISTORY = "do_search_posthistory";
     public static final String ACTION_NEW_MESSAGE         = "newmessage";
 	public static final String ACTION_SHOWPOST 			  = "showpost";
-	public static final String ACTION_ADDLIST 			  = "addlist";
+    public static final String ACTION_ADDLIST 			  = "addlist";
+    public static final String ACTION_QUERY 			  = "query";
+    public static final String ACTION_RESULTS 			  = "results";
     
     public static final String PARAM_USER_ID   = "userid";
     public static final String PARAM_USERNAME  = "username";
@@ -80,6 +83,9 @@ public class Constants {
     public static final String PARAM_FORM_COOKIE = "form_cookie";
     public static final String PARAM_ATTACHMENT = "attachment";
     public static final String PARAM_FOLDERID 	= "folderid";
+    public static final String PARAM_QUERY 	= "q";
+    public static final String PARAM_QID 	= "qid";
+    public static final String PARAM_FORUMS 	= "forums[%d]";
 
 	public static final String USERLIST_IGNORE = "ignore";
 	public static final String USERLIST_BUDDY  = "buddy";
@@ -101,7 +107,8 @@ public class Constants {
     public static final String EDITING   = "editing";
     public static final String MODAL     = "modal";
     public static final String SHORTCUT  = "shortcut";
-	public static final String PRIVATE_MESSAGE = "private";    
+    public static final String PRIVATE_MESSAGE = "private";
+    public static final String THREAD_FRAGMENT = "fragment";
 
     public static final String FORM_KEY = "form_key";
     public static final String FORMKEY  = "formkey";
@@ -121,6 +128,7 @@ public class Constants {
 	public static final String COOKIE_PREF_SESSIONID    = "sessionid";
 	public static final String COOKIE_PREF_SESSIONHASH    = "sessionhash";
 	public static final String COOKIE_PREF_EXPIRY_DATE = "expiration";
+	public static final String COOKIE_PREF_VERSION     = "version";
 
 	// Content provider
     public static final String AUTHORITY = "com.ferg.awfulapp.provider";
@@ -182,6 +190,10 @@ public class Constants {
     public static final int FORUM_ID_COOL_CREW = 196;
 
     public static final int FORUM_ID_GOLDMINE = 21;
+
+
+    public static final int AWFUL_PERMISSION_READ_EXTERNAL_STORAGE = 123;
+    public static final int AWFUL_PERMISSION_WRITE_EXTERNAL_STORAGE = 124;
 
 
 }

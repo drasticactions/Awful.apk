@@ -42,6 +42,7 @@ import com.ferg.awfulapp.R;
 import com.ferg.awfulapp.constants.Constants;
 import com.ferg.awfulapp.preferences.AwfulPreferences;
 import com.ferg.awfulapp.util.AwfulError;
+import com.ferg.awfulapp.util.AwfulUtils;
 
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -95,7 +96,7 @@ public class AwfulMessage extends AwfulPagedItem {
 		if(t != null){
 			title.setText(t);
 		}
-		TextView author = (TextView) current.findViewById(R.id.threadinfo);
+		TextView author = (TextView) current.findViewById(R.id.thread_info);
 		String auth = data.getString(data.getColumnIndex(AUTHOR));
 		String date = data.getString(data.getColumnIndex(DATE));
 		if(auth != null && date != null){
@@ -105,7 +106,6 @@ public class AwfulMessage extends AwfulPagedItem {
         ImageView unreadPM = (ImageView) current.findViewById(R.id.thread_tag);
 
 		unreadPM.setVisibility(View.VISIBLE);
-		Log.e(TAG, author.getText() +" "+ data.getInt(data.getColumnIndex(UNREAD)));
 
 		int[] attrs;
 		switch (data.getInt(data.getColumnIndex(UNREAD))){
@@ -246,13 +246,9 @@ public class AwfulMessage extends AwfulPagedItem {
 	        buffer.append("<meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\" />\n");
 	        buffer.append("<meta name='format-detection' content='telephone=no' />\n");
 	        buffer.append("<meta name='format-detection' content='address=no' />\n");
-	        File css = new File(Environment.getExternalStorageDirectory()+"/awful/"+pref.theme);
-	       
-	        if(StringUtils.countMatches(pref.theme,".")>1 && css.exists() && css.isFile() && css.canRead()){
-	        	buffer.append("<link rel='stylesheet' href='").append(Environment.getExternalStorageDirectory()).append("/awful/").append(pref.theme).append("'>\n");
-	        }else{
-	            buffer.append("<link rel='stylesheet' href='file:///android_asset/css/").append(pref.theme).append("'>\n");
-	        }
+
+	        buffer.append("<link rel='stylesheet' href='").append(AwfulUtils.determineCSS(0)).append("'>");
+
 	        if(!pref.preferredFont.contains("default")){
 	        	buffer.append("<style type='text/css'>@font-face { font-family: userselected; src: url('content://com.ferg.awfulapp.webprovider/").append(pref.preferredFont).append("'); }</style>\n");
 	        }

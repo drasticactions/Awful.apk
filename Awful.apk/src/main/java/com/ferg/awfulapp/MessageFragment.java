@@ -23,6 +23,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.EditText;
@@ -40,6 +41,7 @@ import com.ferg.awfulapp.task.PMReplyRequest;
 import com.ferg.awfulapp.task.PMRequest;
 import com.ferg.awfulapp.task.SendPrivateMessageRequest;
 import com.ferg.awfulapp.thread.AwfulMessage;
+import com.ferg.awfulapp.util.AwfulUtils;
 
 public class MessageFragment extends AwfulFragment implements OnClickListener {
 
@@ -116,7 +118,8 @@ public class MessageFragment extends AwfulFragment implements OnClickListener {
         mTitle = (TextView) result.findViewById(R.id.message_title);
         mBackground = result;
         updateColors(result, mPrefs);
-        
+		initThreadViewProperties();
+
         if(pmId <=0){
         	mDisplayText.setVisibility(View.GONE);
         }else{
@@ -124,31 +127,28 @@ public class MessageFragment extends AwfulFragment implements OnClickListener {
         }
         return result;
     }
+
+	private void initThreadViewProperties(){
+		mDisplayText.getSettings().setRenderPriority(WebSettings.RenderPriority.LOW);
+		mDisplayText.getSettings().setDefaultZoom(WebSettings.ZoomDensity.MEDIUM);
+		mDisplayText.getSettings().setDefaultFontSize(mPrefs.postFontSizeDip);
+		mDisplayText.getSettings().setDefaultFixedFontSize(mPrefs.postFixedFontSizeDip);
+		if(AwfulUtils.isLollipop()) {
+			mDisplayText.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+		}
+
+		if (!mPrefs.enableHardwareAcceleration) {
+			mDisplayText.setLayerType(WebView.LAYER_TYPE_SOFTWARE, null);
+		}
+	}
 	
 	private void updateColors(View v, AwfulPreferences prefs){
-        mEditReply.setBackgroundColor(ColorProvider.getBackgroundColor());
-        mRecipient.setBackgroundColor(ColorProvider.getBackgroundColor());
-        mSubject.setBackgroundColor(ColorProvider.getBackgroundColor());
-        mDisplayText.setBackgroundColor(ColorProvider.getBackgroundColor());
         mEditReply.setTextColor(ColorProvider.getTextColor());
         mRecipient.setTextColor(ColorProvider.getTextColor());
         mSubject.setTextColor(ColorProvider.getTextColor());
         mUsername.setTextColor(ColorProvider.getTextColor());
         mPostdate.setTextColor(ColorProvider.getTextColor());
         mTitle.setTextColor(ColorProvider.getTextColor());
-		TextView miscSubject = (TextView) v.findViewById(R.id.misc_text_subject);
-        TextView miscRecip = (TextView) v.findViewById(R.id.misc_text_recipient);
-        TextView miscMess = (TextView) v.findViewById(R.id.misc_text_message);
-        View header = v.findViewById(R.id.message_header);
-        header.setBackgroundColor(ColorProvider.getBackgroundColor());
-        miscSubject.setBackgroundColor(ColorProvider.getBackgroundColor());
-        miscRecip.setBackgroundColor(ColorProvider.getBackgroundColor());
-        miscMess.setBackgroundColor(ColorProvider.getBackgroundColor());
-        miscSubject.setTextColor(ColorProvider.getAltTextColor());
-        miscRecip.setTextColor(ColorProvider.getAltTextColor());
-        miscMess.setTextColor(ColorProvider.getAltTextColor());
-        v.setBackgroundColor(ColorProvider.getBackgroundColor());
-        
 	}
 	
 	@Override
